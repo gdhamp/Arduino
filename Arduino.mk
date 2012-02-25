@@ -301,6 +301,7 @@ endif
 # The name of the main targets
 TARGET_HEX = $(OBJDIR)/$(TARGET).hex
 TARGET_ELF = $(OBJDIR)/$(TARGET).elf
+TARGET_LST = $(OBJDIR)/$(TARGET).lst
 TARGETS    = $(OBJDIR)/$(TARGET).*
 CORE_LIB   = $(OBJDIR)/libcore.a
 
@@ -504,6 +505,9 @@ depends:	$(DEPS)
 
 size:		$(OBJDIR) $(TARGET_HEX)
 		$(SIZE) $(TARGET_HEX)
+
+list:		$(OBJDIR) $(TARGET_ELF) 
+		avr-objdump -d $(TARGET_ELF) > $(TARGET_LST)
 
 show_boards:	
 		$(PARSE_BOARD) --boards
