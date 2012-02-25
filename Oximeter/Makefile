@@ -12,5 +12,5 @@ ARDUINO_LIBS = LiquidCrystal Timer1
 AVR_TOOLS_PATH   = /usr/bin
 AVRDUDE_CONF     = /etc/avrdude.conf
 
-include $(ARDUINO_DIR)/Arduino.mk
+include ../Arduino.mk
 
