@@ -1,0 +1,1 @@
+egrep -lRZ "i2cLCD" .  | xargs -0 -l sed -i -e 's/i2cLCD/i2cLCD/g'
