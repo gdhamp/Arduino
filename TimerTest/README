@@ -1,0 +1,6 @@
+LED intensity code. Uses timer/counter1 to read the frequency from
+a TSL235 light to frequancy converter. Has a dual emitter LED (RED and IR)
+that is sequenced and the frequency is either sent on the
+serial port or displayed on an LCD.
+
+
