@@ -1,8 +1,9 @@
 
-#include <LiquidCrystal.h>
+#include "Wire.h"
+#include "i2cLCD.h"
 
 #define SPEED_8MHZ
-#define __LCD__
+//#define __LCD__
 //#define __SERIAL__
 
 // these are checked for in the main program
@@ -17,7 +18,7 @@ unsigned int timerTicks;
 unsigned int timerPeriod;
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(0, 1, 4, 9, 6, 7);
+i2cLCD lcd(0);
 
 #define LED_RED 0
 #define LED_IR  1

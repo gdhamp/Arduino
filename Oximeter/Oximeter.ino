@@ -1,4 +1,5 @@
-#include <LiquidCrystal.h>
+#include "Wire.h"
+#include "i2cLCD.h"
 #include <TimerOne.h>
 
 #define __MYISR__
@@ -21,7 +22,7 @@ int PBPin = 8;
 unsigned char PBCount = 0;
 
 // initialize the library with the numbers of the interface pins
-LiquidCrystal lcd(0, 1, 4, 5, 6, 7);
+i2cLCD lcd(0);
 
 void timerIsr()
 {
