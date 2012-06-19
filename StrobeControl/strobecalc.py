@@ -31,14 +31,15 @@ if __name__ == '__main__':
 	else:
 		freq = float(sys.argv[1])
 		print 'Desired Frequency: ' + str(freq)
+		print 'Num Clocks: ' + str(clock/freq)
 		(val, num, last) = calcTimerValues(freq)
-		print 'Num Clocks: ' + str(val)
-		print 'Num 65536 rollovers: ' + str(num)
-		print 'Val for last interval: '  + str(last)
-		print str(val) + ' ' + str(num) + ' ' + str(last)
+		print 'First Timer Val: ' + str(val)
+		print 'Num rollovers: ' + str(num)
+		print 'Last Timer Val: '  + str(last)
 		numClocks =  val * num + last
-		print numClocks
+		print 'Actual Num Clocks:' + str(numClocks)
 		actual =  float(clock) / numClocks
-		print actual
-		print (actual - freq) / freq
+		print 'Actaul Frequncy: ' + str(actual)
+		print 'Error: ' + str((actual - freq) / freq)
+		print
 
