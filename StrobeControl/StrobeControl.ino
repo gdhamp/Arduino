@@ -1,6 +1,9 @@
 
-#include "Wire.h"
-#include "i2cLCD.h"
+// include the library code:
+#include <Wire.h>
+#include <Adafruit_MCP23017.h>
+#include <Adafruit_RGBLCDShield.h>
+#include <PString.h>
 
 #define SPEED_8MHZ
 #define __LCD__
@@ -9,21 +12,22 @@
 // these are checked for in the main program
 
 // initialize the library with the numbers of the interface pins
-i2cLCD lcd(0);
+Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
 
 
+
+char numBuffer[10];
+PString numString(numBuffer, sizeof(numBuffer));
 
 float freq;
-int intPart;
-int fracPart;
-char digits[9];
+int updateLCD;
+int cursorPos;
 
 void setup () {
 
-	intPart = 10;
-	fracPart = 0;
-	digits[4] = '.';
-	digits[8] = 0;
+        freq = 12.234;
+        cursorPos = 3;
+        updateLCD = true;
 
 #ifdef __SERIAL__
 	Serial.begin(115200);       
@@ -34,8 +38,10 @@ void setup () {
 	// set up the LCD's number of columns and rows: 
 	lcd.begin(16,2);
 	// Print a message to the LCD.
-	lcd.print("Count:       ");
-//	lcd.setCursor(0, 1);
+        //         0123456789012345
+	lcd.print("Freq: ");
+	lcd.cursor();
+        lcd.setCursor(cursorPos + 6, 0);
 #endif
 
 } // end of setup
@@ -46,28 +52,27 @@ void loop () {
 
 	uint8_t buttons = lcd.readButtons();
 
-	// adjust counts by counting interval to give frequency in Hz
-	float frq = (timerCount * 1000.0) / timerPeriod;
 
-#ifdef __SERIAL__
-	Serial.print ("Frequency: ");
-	Serial.println ((unsigned long) frq);
-#endif
+        if (buttons & BUTTON_UP)
+        
+        {
+        }
 
 #ifdef __LCD__
 	if (updateLCD)
 	{
-		lcd.setCursor(0, 0);
-		digits[0] = (intPart/1000) % 10 + '0';
-		digits[1] = (intPart/100) % 10 + '0';
-		digits[2] = (intPart/10) % 10 + '0';
-		digits[3] = (intPart) % 10 + '0';
-
-		digits[5] = (fracPart/100) % 10 + '0';
-		digits[6] = (fracPart/10) % 10 + '0';
-		digits[7] = (fracPart) % 10 + '0';
-
-		lcd.print(digits);
+                numString.print(freq, 3);
+                
+                
+                lcd.setCursor(14 - numString.length(),0);
+		lcd.print(numString);
+                updateLCD = false;
+               
+                lcd.setCursor(cursorPos + 6, 0);
+#ifdef __SERIAL__
+                Serial.println(12 - numString.length());
+        	Serial.println(numString);
+#endif
 	}
 
 	
