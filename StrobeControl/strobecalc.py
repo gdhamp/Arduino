@@ -39,7 +39,7 @@ if __name__ == '__main__':
 		numClocks =  val * num + last
 		print 'Actual Num Clocks:' + str(numClocks)
 		actual =  float(clock) / numClocks
-		print 'Actaul Frequncy: ' + str(actual)
+		print 'Actual Frequncy: ' + str(actual)
 		print 'Error: ' + str((actual - freq) / freq)
 		print
 
