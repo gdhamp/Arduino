@@ -6,7 +6,7 @@ clock = 16000000
 minTimerVal = 32768
 
 def calcTimerValues(freq):
-	timerVal = 65536
+	timerVal = 65535
 	numclocks = int(round(clock/freq))
 	lastTimerVal = 0
 	numIntervals = int(numclocks / timerVal)
