@@ -8,6 +8,18 @@
 #define SPEED_8MHZ
 //#define __SERIAL__
 
+// initialize the library 
+Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
+
+char numBuffer[17];
+PString numString(numBuffer, sizeof(numBuffer));
+
+float clockFreq = 16000000.0;
+float freq;
+boolean freqChanged;
+int cursorPos;
+
+bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, word* lastTimerVal);
 
 #define DEFAULT_LONGPRESS_LEN    25  // Min nr of loops for a long press
 #define DELAY                    20  // Delay per loop in ms
@@ -83,21 +95,11 @@ ButtonHandler buttonLeft(BUTTON_LEFT);
 ButtonHandler buttonRight(BUTTON_RIGHT);
 
 
-// initialize the library 
-Adafruit_RGBLCDShield lcd = Adafruit_RGBLCDShield();
-
-char numBuffer[10];
-PString numString(numBuffer, sizeof(numBuffer));
-
-float freq;
-int updateLCD;
-int cursorPos;
-
 void setup () {
 
 	freq = 12.234;
 	cursorPos = 3;
-	updateLCD = true;
+	freqChanged = true;
 
 #ifdef __SERIAL__
 	Serial.begin(115200);       
@@ -149,7 +151,7 @@ void loop () {
 		freq += blah[cursorPos];	
 		if (freq > 2000.0)
 			freq = 2000.0;
-		updateLCD = true;
+		freqChanged = true;
 	}
 		
 		
@@ -166,12 +168,28 @@ void loop () {
 		if (freq < 0.0)
 			freq = 0.1;
 
-		updateLCD = true;
+		freqChanged = true;
 	}
 
 
-	if (updateLCD)
+	if (freqChanged)
 	{
+		word firstTimerVal;
+		int numTimerIntervals;
+		word lastTimerVal;
+
+		calcTimerValues(freq, &firstTimerVal, &numTimerIntervals, &lastTimerVal);
+		numString.begin();
+		numString.print(firstTimerVal);
+		numString.print(" ");
+		numString.print(numTimerIntervals);
+		numString.print(" ");
+		numString.print(lastTimerVal);
+		numString.print(" ");
+			
+		lcd.setCursor(0,1);
+		lcd.print(numString);
+		
 		numString.begin();
 		numString.print(freq, 3);
                 
@@ -179,7 +197,7 @@ void loop () {
 		lcd.print("        ");
 		lcd.setCursor(14 - numString.length(),0);
 		lcd.print(numString);
-		updateLCD = false;
+		freqChanged = false;
                
 
 #ifdef __SERIAL__
@@ -189,9 +207,6 @@ void loop () {
 	}
 
 	lcd.setCursor(cursorPos + 6, 0);
-	
-
-
 
 #ifdef __SERIAL__
 	// let serial stuff finish
@@ -201,5 +216,30 @@ void loop () {
   delay(DELAY);
 }
 
+bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, word* lastTimerVal)
+{
+	word timerVal = 65535;
+	word minTimerVal = 32768;
+	long numClocks = long (clockFreq / freq + 0.5);
+	int numIntervals = int(numClocks/timerVal);
+	word lastVal = numClocks % timerVal;
+
+	if (numIntervals != 0)
+	{
+		if (lastVal < minTimerVal)
+		{
+			word delta = minTimerVal - lastVal;
+			int decrement = delta / numIntervals + 1;
+			timerVal -= decrement;
+			numIntervals = int (numClocks /timerVal);
+			lastVal = numClocks % timerVal;
+		}
+	}
+
+	*firstTimerVal = timerVal;
+	*numTimerIntervals = numIntervals;
+	*lastTimerVal = lastVal;
+	return true;
+}
 
 
