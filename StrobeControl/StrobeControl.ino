@@ -4,6 +4,7 @@
 #include <Adafruit_MCP23017.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <PString.h>
+#include <TimerOne.h>
 
 #define SPEED_8MHZ
 //#define __SERIAL__
@@ -23,6 +24,98 @@ bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, wo
 
 #define DEFAULT_LONGPRESS_LEN    25  // Min nr of loops for a long press
 #define DELAY                    20  // Delay per loop in ms
+
+
+class StrobeTimer : public TimerOne
+{
+	void Init();
+	void SetFreq(word firstTimerVal, int numTimerIntervals, word lastTimerVal);
+	void Start(void);
+	void Stop(void);
+	static void StrobeISR(void);
+	
+protected:
+	word m_FirstTimerVal;
+	int  m_NumIntervals;
+	word m_LastTimerVal;
+
+	word m_CurFirstTimerVal;
+	int  m_CurNumIntervals;
+	word m_CurLastTimerVal;
+
+};
+
+void StrobeTimer::Init(void)
+{
+	// Set COM1A to 0 - No Output on Match
+	// WGM(13:10) to 4 - CTC mode
+	// CS1(2:0) to 1 - No Prescale)
+	TCCR1A = 0
+	TCCR1B = _BV(WGM12);
+	clockSelectBits = _BV(CS10);
+}
+
+void StrobeTimer::SetFreq(word firstTimerVal, int numTimerIntervals, word lastTimerVal)
+{
+	// Disable Interrupts
+	oldSREG = SREG;
+	cli();
+
+	m_FirstTimerVal = firstTimerVal;
+	m_NumIntervals = numTimerIntervals;
+	m_LastTimerVal = lastTimerVal;
+
+	SREG = oldSREG;
+}
+
+void StrobeTimer::Start(void)
+{
+	// Disable Interrupts
+	oldSREG = SREG;
+	cli();
+
+	m_CurFirstTimerVal = m_FirstTimerVal;
+	m_CurNumIntervals = m_NumIntervals;
+	m_CurLastTimerVal = m_LastTimerVal;
+	
+	// Set the counter value
+	TCNT1 = 0;
+	OCR1A = m_CurFirstTimerVal;
+	SREG = oldSREG;
+
+	// Setup the ISR and the interrupt mask
+	isrCallback = StrobeTimer::StrobeISR;
+	TIMSK1 = OCIE1A;
+
+	// Start the timer
+	TCCR1B |= clockSelectBits;
+}
+
+void StrobeTimer::Stop(void)
+{
+	// Stop the timer
+	TCCR1B &= ~(_BV(CS12) | _BV(CS11) | _BV(CS10));
+}
+
+void StrobeTimer::StrobeISR(void)
+{
+	if (0==m_CurNumIntervals--)
+	{
+		// Next match causes output to go low
+		TCCR1A |= _BV(COM1A1) | _BV(COM1A0);
+		OCR1A = m_CurLastTimerVal;
+		
+		m_CurFirstTimerVal = m_FirstTimerVal;
+		m_CurNumIntervals = m_NumIntervals;
+		m_CurLastTimerVal = m_LastTimerVal;
+	}
+	else
+	{
+		// if still counting intervals disable output pin change
+		TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
+		OCR1A = m_CurFirstTimerVal;
+	}
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -95,6 +188,7 @@ ButtonHandler buttonLeft(BUTTON_LEFT);
 ButtonHandler buttonRight(BUTTON_RIGHT);
 
 
+StrobeTimer blah1;
 void setup () {
 
 	freq = 12.234;
@@ -111,6 +205,8 @@ void setup () {
 	buttonDown.init();
 	buttonLeft.init();
 	buttonRight.init();
+
+	blah1.initialize(5000);
 
 	// set up the LCD's number of columns and rows: 
 	lcd.begin(16,2);
