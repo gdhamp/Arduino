@@ -29,8 +29,10 @@ bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, wo
 class StrobeTimer
 {
 public:
-	void Init();
-	void SetFreq(word firstTimerVal, int numTimerIntervals, word lastTimerVal);
+	void Init(word pulseTimerVal);
+	void SetTimerVals(word firstTimerVal, int numTimerIntervals, word lastTimerVal);
+	void GetTimerVals(word* firstTimerVal, int* numTimerIntervals, word* lastTimerVal);
+	bool SetFreq(float freq);
 	void Start(void);
 	void Stop(void);
 	void StrobeISR(void);
@@ -42,10 +44,14 @@ protected:
 	word m_FirstTimerVal;
 	int  m_NumIntervals;
 	word m_LastTimerVal;
+	word m_PulseTimerVal;
+	bool m_PulseInterval;
 
 	word m_CurFirstTimerVal;
 	int  m_CurNumIntervals;
 	word m_CurLastTimerVal;
+
+
 
 };
 
@@ -56,7 +62,7 @@ ISR(TIMER1_COMPA_vect)          // interrupt service routine
   StrobeTimer1.StrobeISR();
 }
 
-void StrobeTimer::Init(void)
+void StrobeTimer::Init(word pulseTimerVal)
 {
 	// Set COM1A to 0 - No Output on Match
 	// WGM(13:10) to 4 - CTC mode
@@ -64,9 +70,43 @@ void StrobeTimer::Init(void)
 	TCCR1A = 0;
 	TCCR1B = _BV(WGM12);
 	clockSelectBits = _BV(CS10);
+
+	m_PulseTimerVal = pulseTimerVal;
 }
 
-void StrobeTimer::SetFreq(word firstTimerVal, int numTimerIntervals, word lastTimerVal)
+bool StrobeTimer::SetFreq(float freq)
+{
+	word timerVal = 65535;
+	word minTimerVal = 32768;
+	long numClocks = long (clockFreq / freq + 0.5) - m_PulseTimerVal;
+	int numIntervals = int(numClocks/timerVal);
+	word lastVal = numClocks % timerVal;
+
+	if (numIntervals != 0)
+	{
+		if (lastVal < minTimerVal)
+		{
+			word delta = minTimerVal - lastVal;
+			int decrement = delta / numIntervals + 1;
+			timerVal -= decrement;
+			numIntervals = int (numClocks /timerVal);
+			lastVal = numClocks % timerVal;
+		}
+	}
+
+	SetTimerVals(timerVal, numIntervals, lastVal);
+	return true;
+}
+
+void StrobeTimer::GetTimerVals(word* firstTimerVal, int* numTimerIntervals, word* lastTimerVal)
+{
+	 *firstTimerVal = m_FirstTimerVal;
+	 *numTimerIntervals = m_NumIntervals;
+	 *lastTimerVal = m_LastTimerVal;
+	return;
+}
+
+void StrobeTimer::SetTimerVals(word firstTimerVal, int numTimerIntervals, word lastTimerVal)
 {
 	// Disable Interrupts
 	oldSREG = SREG;
@@ -95,7 +135,7 @@ void StrobeTimer::Start(void)
 	SREG = oldSREG;
 
 	// Setup the ISR and the interrupt mask
-	TIMSK1 = OCIE1A;
+	TIMSK1 = _BV(OCIE1A);
 
 	// Start the timer
 	TCCR1B |= clockSelectBits;
@@ -109,23 +149,36 @@ void StrobeTimer::Stop(void)
 
 void StrobeTimer::StrobeISR(void)
 {
-	if (0==m_CurNumIntervals--)
+	if (m_PulseInterval)
 	{
-		// Next match causes output to go low
-//		TCCR1A |= _BV(COM1A1) | _BV(COM1A0);
-		TCCR1A |= _BV(COM1A0);
-		OCR1A = m_CurLastTimerVal;
-		
+		OCR1A = m_PulseTimerVal;
+
 		m_CurFirstTimerVal = m_FirstTimerVal;
 		m_CurNumIntervals = m_NumIntervals;
 		m_CurLastTimerVal = m_LastTimerVal;
+
+		m_PulseInterval = false;
 	}
-	else
+	else if (0!=m_CurNumIntervals--)
 	{
 		// if still counting intervals disable output pin change
 //		TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
 		TCCR1A &= ~(_BV(COM1A0));
 		OCR1A = m_CurFirstTimerVal;
+	}
+	else
+	{
+		// Next match causes output to go low
+//		TCCR1A |= _BV(COM1A1) | _BV(COM1A0);
+		TCCR1A |= _BV(COM1A0);
+
+		OCR1A = m_CurLastTimerVal;
+		
+		m_CurFirstTimerVal = m_FirstTimerVal;
+		m_CurNumIntervals = m_NumIntervals;
+		m_CurLastTimerVal = m_LastTimerVal;
+
+		m_PulseInterval = true;
 	}
 }
 
@@ -206,7 +259,7 @@ void setup () {
 	int numTimerIntervals;
 	word lastTimerVal;
 
-	freq = 12.234;
+	freq = 100.0;
 	cursorPos = 3;
 	freqChanged = true;
 
@@ -231,8 +284,9 @@ void setup () {
 	lcd.setCursor(cursorPos + 6, 0);
 
 	pinMode(9, OUTPUT);
-	calcTimerValues(freq, &firstTimerVal, &numTimerIntervals, &lastTimerVal);
-	StrobeTimer1.SetFreq(firstTimerVal, numTimerIntervals, lastTimerVal);
+
+	StrobeTimer1.Init(800);
+	StrobeTimer1.SetFreq(freq);
 	StrobeTimer1.Start();
 } // end of setup
 
@@ -292,8 +346,8 @@ void loop () {
 		int numTimerIntervals;
 		word lastTimerVal;
 
-		calcTimerValues(freq, &firstTimerVal, &numTimerIntervals, &lastTimerVal);
-		StrobeTimer1.SetFreq(firstTimerVal, numTimerIntervals, lastTimerVal);
+		StrobeTimer1.SetFreq(freq);
+		StrobeTimer1.GetTimerVals(&firstTimerVal, &numTimerIntervals, &lastTimerVal);
 		numString.begin();
 		numString.print(firstTimerVal);
 		numString.print(" ");
@@ -330,31 +384,4 @@ void loop () {
 
   delay(DELAY);
 }
-
-bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, word* lastTimerVal)
-{
-	word timerVal = 65535;
-	word minTimerVal = 32768;
-	long numClocks = long (clockFreq / freq + 0.5);
-	int numIntervals = int(numClocks/timerVal);
-	word lastVal = numClocks % timerVal;
-
-	if (numIntervals != 0)
-	{
-		if (lastVal < minTimerVal)
-		{
-			word delta = minTimerVal - lastVal;
-			int decrement = delta / numIntervals + 1;
-			timerVal -= decrement;
-			numIntervals = int (numClocks /timerVal);
-			lastVal = numClocks % timerVal;
-		}
-	}
-
-	*firstTimerVal = timerVal;
-	*numTimerIntervals = numIntervals;
-	*lastTimerVal = lastVal;
-	return true;
-}
-
 
