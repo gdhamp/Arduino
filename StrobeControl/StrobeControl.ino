@@ -4,7 +4,7 @@
 #include <Adafruit_MCP23017.h>
 #include <Adafruit_RGBLCDShield.h>
 #include <PString.h>
-#include <TimerOne.h>
+//#include <TimerOne.h>
 
 #define SPEED_8MHZ
 //#define __SERIAL__
@@ -26,15 +26,19 @@ bool calcTimerValues(float freq, word* firstTimerVal, int* numTimerIntervals, wo
 #define DELAY                    20  // Delay per loop in ms
 
 
-class StrobeTimer : public TimerOne
+class StrobeTimer
 {
+public:
 	void Init();
 	void SetFreq(word firstTimerVal, int numTimerIntervals, word lastTimerVal);
 	void Start(void);
 	void Stop(void);
-	static void StrobeISR(void);
+	void StrobeISR(void);
+	
 	
 protected:
+	unsigned char clockSelectBits;
+	char oldSREG;
 	word m_FirstTimerVal;
 	int  m_NumIntervals;
 	word m_LastTimerVal;
@@ -45,12 +49,19 @@ protected:
 
 };
 
+StrobeTimer StrobeTimer1;              // preinstatiate
+
+ISR(TIMER1_COMPA_vect)          // interrupt service routine
+{
+  StrobeTimer1.StrobeISR();
+}
+
 void StrobeTimer::Init(void)
 {
 	// Set COM1A to 0 - No Output on Match
 	// WGM(13:10) to 4 - CTC mode
 	// CS1(2:0) to 1 - No Prescale)
-	TCCR1A = 0
+	TCCR1A = 0;
 	TCCR1B = _BV(WGM12);
 	clockSelectBits = _BV(CS10);
 }
@@ -84,7 +95,6 @@ void StrobeTimer::Start(void)
 	SREG = oldSREG;
 
 	// Setup the ISR and the interrupt mask
-	isrCallback = StrobeTimer::StrobeISR;
 	TIMSK1 = OCIE1A;
 
 	// Start the timer
@@ -102,7 +112,8 @@ void StrobeTimer::StrobeISR(void)
 	if (0==m_CurNumIntervals--)
 	{
 		// Next match causes output to go low
-		TCCR1A |= _BV(COM1A1) | _BV(COM1A0);
+//		TCCR1A |= _BV(COM1A1) | _BV(COM1A0);
+		TCCR1A |= _BV(COM1A0);
 		OCR1A = m_CurLastTimerVal;
 		
 		m_CurFirstTimerVal = m_FirstTimerVal;
@@ -112,7 +123,8 @@ void StrobeTimer::StrobeISR(void)
 	else
 	{
 		// if still counting intervals disable output pin change
-		TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
+//		TCCR1A &= ~(_BV(COM1A1) | _BV(COM1A0));
+		TCCR1A &= ~(_BV(COM1A0));
 		OCR1A = m_CurFirstTimerVal;
 	}
 }
@@ -188,8 +200,11 @@ ButtonHandler buttonLeft(BUTTON_LEFT);
 ButtonHandler buttonRight(BUTTON_RIGHT);
 
 
-StrobeTimer blah1;
 void setup () {
+
+	word firstTimerVal;
+	int numTimerIntervals;
+	word lastTimerVal;
 
 	freq = 12.234;
 	cursorPos = 3;
@@ -206,7 +221,6 @@ void setup () {
 	buttonLeft.init();
 	buttonRight.init();
 
-	blah1.initialize(5000);
 
 	// set up the LCD's number of columns and rows: 
 	lcd.begin(16,2);
@@ -216,6 +230,10 @@ void setup () {
 	lcd.cursor();
 	lcd.setCursor(cursorPos + 6, 0);
 
+	pinMode(9, OUTPUT);
+	calcTimerValues(freq, &firstTimerVal, &numTimerIntervals, &lastTimerVal);
+	StrobeTimer1.SetFreq(firstTimerVal, numTimerIntervals, lastTimerVal);
+	StrobeTimer1.Start();
 } // end of setup
 
 float blah[8] = { 1000.0, 100.0, 10.0, 1.0, 0.0, 0.1, 0.01, 0.001 };
@@ -275,6 +293,7 @@ void loop () {
 		word lastTimerVal;
 
 		calcTimerValues(freq, &firstTimerVal, &numTimerIntervals, &lastTimerVal);
+		StrobeTimer1.SetFreq(firstTimerVal, numTimerIntervals, lastTimerVal);
 		numString.begin();
 		numString.print(firstTimerVal);
 		numString.print(" ");

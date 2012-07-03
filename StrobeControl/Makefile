@@ -6,7 +6,7 @@ BOARD_TAG    = uno
 ARDUINO_PORT = /dev/ttyACM0
 
 USER_LIB_PATH=/home/ghampton/arduino/Arduino/libraries
-ARDUINO_LIBS = Wire Wire/utility PString Adafruit_RGBLCDShield
+ARDUINO_LIBS = Wire Wire/utility PString Adafruit_RGBLCDShield TimerOne
 
 
 ARDMK_DIR     = /usr/local
