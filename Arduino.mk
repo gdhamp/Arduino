@@ -18,4 +18,3 @@ ifeq ($(UNAME_S),Darwin)
 	AVRDUDE_CONF     = $(ARDUINO_DIR)/hardware/tools/avr/etc/avrdude
 endif
 
-include ../Arduino-Makefile/arduino-mk/Arduino.mk
