@@ -3,10 +3,10 @@ UNAME_S := $(shell uname -s)
 
 ifeq ($(UNAME_S),Linux)
 	# linux config
-	ARDUINO_DIR = /opt/arduino-1.0
+	ARDUINO_DIR = /opt/arduino
 	ARDUINO_PORT = /dev/ttyACM0
-	AVR_TOOLS_PATH   = /usr/bin
-	AVRDUDE_CONF     = /etc/avrdude.conf
+	AVR_TOOLS_PATH   = $(ARDUINO_DIR)/hardware/tools/avr/bin
+	AVRDUDE_CONF     = $(ARDUINO_DIR)/hardware/tools/avrdude
 endif
 
 ifeq ($(UNAME_S),Darwin)
